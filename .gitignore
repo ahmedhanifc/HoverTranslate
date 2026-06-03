@@ -16,3 +16,5 @@ dist/
 *.egg-info/
 .arabic_hover/
 history.json
+
+iterations/
