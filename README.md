@@ -1,6 +1,6 @@
-# Arabic Hover
+# HoverTranslate
 
-Arabic Hover is a small macOS translation helper. Press a shortcut, select text in any app, and an always-on-top box shows the translation. The app now works with multiple language pairs, not only Arabic.
+HoverTranslate is a small macOS translation helper. Press a shortcut, select text in any app, and an always-on-top box shows the translation. The app now works with multiple language pairs, not only Arabic.
 
 ## What It Does
 
