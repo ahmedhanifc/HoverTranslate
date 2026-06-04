@@ -1,4 +1,5 @@
 import json
+import logging
 import os
 import queue
 import sys
@@ -25,6 +26,8 @@ COPY_SUCCESS_ICON = "✓"
 COPY_SUCCESS_VISIBLE_MS = 900
 APP_DIR = Path.home() / ".arabic_hover"
 HISTORY_PATH = APP_DIR / "history.json"
+USER_ENV_PATH = APP_DIR / ".env"
+LOG_PATH = Path.home() / "Library" / "Logs" / "HoverTranslate.log"
 LANGUAGES = [
     "Auto-detect",
     "Arabic",
@@ -51,13 +54,23 @@ TARGET_LANGUAGES = [
 INPUT_LISTENER_STARTUP_TIMEOUT = 0.35
 
 
+def configure_logging():
+    """Write diagnostics where macOS windowed app launches can find them."""
+    LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
+    logging.basicConfig(
+        filename=LOG_PATH,
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(message)s",
+    )
+
+
 def build_input_listener_error(listener_name, error=None):
     python_version = ".".join(str(part) for part in sys.version_info[:3])
     message = (
         "Arabic Hover could not start the macOS keyboard/mouse listeners.\n\n"
         "Use a Python 3.13 environment, reinstall requirements.txt, and grant "
-        "Accessibility plus Input Monitoring permissions to the terminal or "
-        "editor running python main.py.\n\n"
+        "Accessibility plus Input Monitoring permissions to this app. If running "
+        "from a terminal or editor, grant permissions to that launcher instead.\n\n"
         f"Failed listener: {listener_name}\n"
         f"Python: {python_version}\n"
         "See README.md -> macOS Permissions for the full setup steps."
@@ -759,7 +772,10 @@ def poll_requests(
     )
 
 
+configure_logging()
 load_dotenv()
+load_dotenv(USER_ENV_PATH, override=True)
+logging.info("HoverTranslate starting.")
 
 openai_model = require_env("OPENAI_MODEL")
 openai_api_key = require_env("OPENAI_API_KEY")
@@ -834,9 +850,11 @@ try:
     )
 except RuntimeError as error:
     root.destroy()
+    logging.exception("Input listener startup failed.")
     print(error, file=sys.stderr)
     raise SystemExit(1) from error
 
+logging.info("Translator running. Press ctrl+option+a to toggle translation mode.")
 print("Translator running.")
 print("Press ctrl+option+a to toggle translation mode.")
 

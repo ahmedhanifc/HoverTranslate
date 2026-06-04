@@ -47,6 +47,16 @@ OPENAI_API_KEY=your_api_key_here
 OPENAI_API_BASE=https://api.openai.com/v1
 ```
 
+For the packaged macOS app, keep the same values in:
+
+```text
+~/.arabic_hover/.env
+```
+
+The app loads the project `.env` for development runs, then loads
+`~/.arabic_hover/.env` if present. Values in `~/.arabic_hover/.env` take
+precedence.
+
 Run the app:
 
 ```bash
@@ -59,9 +69,53 @@ You can smoke-test the macOS listener dependency before running the full app:
 python -c "from pynput import keyboard; import time; listener = keyboard.Listener(on_press=lambda key: None); listener.start(); time.sleep(0.5); print('listener alive:', listener.is_alive()); listener.stop()"
 ```
 
+## Build the macOS App
+
+Install PyInstaller if needed:
+
+```bash
+pip install pyinstaller
+```
+
+Build the local `.app` bundle:
+
+```bash
+bash build_macos_app.sh
+```
+
+The build uses the personalized macOS icon at:
+
+```text
+assets/hovertranslate.icns
+```
+
+The output is:
+
+```text
+dist/HoverTranslate.app
+```
+
+Launch it with:
+
+```bash
+open "dist/HoverTranslate.app"
+```
+
+For personal use, you can copy it to Applications after confirming it works:
+
+```bash
+cp -R "dist/HoverTranslate.app" /Applications/
+```
+
+If the app silently exits when launched from Finder or Spotlight, check:
+
+```text
+~/Library/Logs/HoverTranslate.log
+```
+
 ## macOS Permissions
 
-The app copies selected text by sending `cmd+c`, and it listens for a global shortcut and mouse release. macOS may ask for Accessibility or Input Monitoring permissions for your terminal app.
+The app copies selected text by sending `cmd+c`, and it listens for a global shortcut and mouse release. macOS may ask for Accessibility or Input Monitoring permissions.
 
 If the app exits with a listener startup message, or if the shortcut or text
 selection does not work, check:
@@ -69,8 +123,9 @@ selection does not work, check:
 - System Settings -> Privacy & Security -> Accessibility
 - System Settings -> Privacy & Security -> Input Monitoring
 
-Add Terminal, iTerm, VS Code, or whichever app is running `python main.py`.
-Restart that app after changing permissions.
+For development runs, add Terminal, iTerm, VS Code, or whichever app is running
+`python main.py`. For the packaged app, add `HoverTranslate.app` itself.
+Restart the terminal/editor or packaged app after changing permissions.
 
 If you see `KeyError: 'AXIsProcessTrusted'`, recreate the environment with
 Python 3.13 and reinstall the pinned dependencies:
