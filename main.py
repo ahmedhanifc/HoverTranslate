@@ -495,11 +495,11 @@ def create_translator_box(root, popup_state, settings_state, history_state, app_
         container,
         text="⚙",
         bg="#fffef7",
-        fg="#111111",
+        fg="#000000",
         padx=0,
         pady=0,
         cursor="hand2",
-        font=("Arial", 13),
+        font=("Arial", 15, "bold"),
     )
     text_area = tk.Text(
         container,
@@ -519,6 +519,7 @@ def create_translator_box(root, popup_state, settings_state, history_state, app_
     container.pack(fill="both", expand=True)
     text_area.pack(fill="both", expand=True, padx=14, pady=12)
     settings_button.place(relx=1.0, x=-10, y=8, anchor="ne")
+    settings_button.lift()
 
     popup_state["text"] = text_area
 
