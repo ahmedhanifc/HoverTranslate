@@ -8,7 +8,7 @@ HoverTranslate is a small macOS translation helper. Press a shortcut, select tex
 - Select text with the mouse or trackpad while translation mode is active.
 - The selected text is translated with the OpenAI Responses API.
 - The translation appears in a small bottom-center box.
-- Select the translation text directly if you want to copy part or all of it.
+- Use the clipboard icon in the translation box to copy the displayed translation.
 - Use the settings gear to choose source and target languages.
 - Open `History` from settings to view recent translations stored on this Mac.
 

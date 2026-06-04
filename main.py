@@ -20,6 +20,9 @@ POPUP_WIDTH = 620
 POPUP_BOTTOM_MARGIN = 70
 MOUSE_DRAG_THRESHOLD = 4
 HISTORY_LIMIT = 100
+COPY_ICON = "📋"
+COPY_SUCCESS_ICON = "✓"
+COPY_SUCCESS_VISIBLE_MS = 900
 APP_DIR = Path.home() / ".arabic_hover"
 HISTORY_PATH = APP_DIR / "history.json"
 LANGUAGES = [
@@ -206,7 +209,37 @@ def hide_translator_box(root, popup_state):
     """Hide the translator box and clear its copied text."""
     root.withdraw()
     popup_state["current_text"] = ""
-    replace_text(popup_state["text"], "")
+    popup_state["label"].configure(text="")
+    if popup_state["copy_restore_id"] is not None:
+        root.after_cancel(popup_state["copy_restore_id"])
+        popup_state["copy_restore_id"] = None
+    popup_state["copy_button"].configure(text=COPY_ICON)
+
+
+def restore_copy_icon(popup_state):
+    """Restore the popup clipboard icon after copy feedback."""
+    popup_state["copy_restore_id"] = None
+    popup_state["copy_button"].configure(text=COPY_ICON)
+
+
+def show_copy_success(root, popup_state):
+    """Briefly show that the popup translation was copied."""
+    if popup_state["copy_restore_id"] is not None:
+        root.after_cancel(popup_state["copy_restore_id"])
+
+    popup_state["copy_button"].configure(text=COPY_SUCCESS_ICON)
+    popup_state["copy_restore_id"] = root.after(
+        COPY_SUCCESS_VISIBLE_MS,
+        lambda: restore_copy_icon(popup_state),
+    )
+
+
+def copy_current_translation(root, popup_state):
+    """Copy the translation currently shown in the popup."""
+    current_text = popup_state["current_text"].strip()
+    if current_text != "":
+        pyperclip.copy(current_text)
+        show_copy_success(root, popup_state)
 
 
 def deactivate_translator(root, popup_state, app_state):
@@ -238,8 +271,7 @@ def update_popup_text(popup_state, text):
     estimated_wrapped_lines = int(len(text) / 72) + 1
     text_height = max(2, min(8, line_count + estimated_wrapped_lines - 1))
     popup_state["current_text"] = text
-    popup_state["text"].configure(height=text_height)
-    replace_text(popup_state["text"], text)
+    popup_state["label"].configure(text=text, height=text_height)
 
 
 def show_translator_box(root, popup_state, app_state, text):
@@ -491,6 +523,16 @@ def create_translator_box(root, popup_state, settings_state, history_state, app_
     root.configure(bg="#fffef7")
 
     container = tk.Frame(root, bg="#fffef7")
+    copy_button = tk.Label(
+        container,
+        text=COPY_ICON,
+        bg="#fffef7",
+        fg="#000000",
+        padx=0,
+        pady=0,
+        cursor="hand2",
+        font=("Arial", 14),
+    )
     settings_button = tk.Label(
         container,
         text="⚙",
@@ -501,31 +543,35 @@ def create_translator_box(root, popup_state, settings_state, history_state, app_
         cursor="hand2",
         font=("Arial", 15, "bold"),
     )
-    text_area = tk.Text(
+    text_label = tk.Label(
         container,
         bg="#fffef7",
         fg="#111111",
         padx=14,
         pady=10,
-        wrap="word",
+        wraplength=POPUP_WIDTH - 70,
+        justify="left",
+        anchor="w",
         font=("Arial", 15),
         height=2,
-        relief="flat",
-        borderwidth=0,
-        highlightthickness=0,
-        insertborderwidth=0,
     )
 
     container.pack(fill="both", expand=True)
-    text_area.pack(fill="both", expand=True, padx=14, pady=12)
+    text_label.pack(fill="both", expand=True, padx=(14, 64), pady=12)
+    copy_button.place(relx=1.0, x=-42, y=8, anchor="ne")
     settings_button.place(relx=1.0, x=-10, y=8, anchor="ne")
+    copy_button.lift()
     settings_button.lift()
 
-    popup_state["text"] = text_area
+    popup_state["label"] = text_label
+    popup_state["copy_button"] = copy_button
 
-    replace_text(text_area, "")
     root.bind("<Escape>", lambda event: deactivate_translator(root, popup_state, app_state))
-    text_area.bind("<Escape>", lambda event: deactivate_translator(root, popup_state, app_state))
+    text_label.bind("<Escape>", lambda event: deactivate_translator(root, popup_state, app_state))
+    copy_button.bind(
+        "<ButtonRelease-1>",
+        lambda event: copy_current_translation(root, popup_state),
+    )
     settings_button.bind(
         "<ButtonRelease-1>",
         lambda event: create_settings_window(
@@ -539,8 +585,9 @@ def create_translator_box(root, popup_state, settings_state, history_state, app_
     for widget in [
         root,
         container,
+        copy_button,
         settings_button,
-        text_area,
+        text_label,
     ]:
         bind_internal_click(widget, app_state)
 
@@ -721,7 +768,12 @@ keyboard_controller = keyboard.Controller()
 root = tk.Tk()
 root.title("Translator")
 root.withdraw()
-popup_state = {"text": None, "current_text": ""}
+popup_state = {
+    "label": None,
+    "copy_button": None,
+    "copy_restore_id": None,
+    "current_text": "",
+}
 settings_state = {
     "source_language": "Auto-detect",
     "target_language": "English",
