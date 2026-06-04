@@ -215,11 +215,6 @@ def deactivate_translator(root, popup_state, app_state):
     hide_translator_box(root, popup_state)
 
 
-def copy_popup_text(popup_state):
-    """Copy the current translator box text to the clipboard."""
-    pyperclip.copy(popup_state["current_text"])
-
-
 def keep_translator_box_topmost(root):
     """Reassert that the translator box is above normal windows."""
     root.attributes("-topmost", True)
@@ -256,23 +251,25 @@ def show_translator_box(root, popup_state, app_state, text):
     root.update_idletasks()
 
 
-def apply_language_settings(settings_state, popup_state, source_var, target_var):
+def apply_language_settings(settings_state, source_var, target_var):
     """Apply selected languages to future translations."""
     if target_var.get() == "Auto-detect":
         raise RuntimeError("Target language cannot be Auto-detect")
 
     settings_state["source_language"] = source_var.get()
     settings_state["target_language"] = target_var.get()
-    popup_state["language_label"].configure(text=build_language_status(settings_state))
+    if settings_state["language_label"] is not None:
+        settings_state["language_label"].configure(text=build_language_status(settings_state))
 
 
 def close_settings_window(settings_state):
     """Close the settings window and clear its state."""
     settings_state["window"].destroy()
     settings_state["window"] = None
+    settings_state["language_label"] = None
 
 
-def create_settings_window(root, popup_state, settings_state, app_state):
+def create_settings_window(root, settings_state, history_state, app_state):
     """Open the compact settings window for language selection."""
     if settings_state["window"] is not None:
         settings_state["window"].lift()
@@ -287,6 +284,14 @@ def create_settings_window(root, popup_state, settings_state, app_state):
     source_var = tk.StringVar(value=settings_state["source_language"])
     target_var = tk.StringVar(value=settings_state["target_language"])
 
+    language_status = tk.Label(
+        settings_window,
+        text=build_language_status(settings_state),
+        bg="#f6f4ea",
+        fg="#333333",
+        anchor="w",
+        font=("Arial", 12),
+    )
     source_label = tk.Label(settings_window, text="From", bg="#f6f4ea", anchor="w")
     source_combo = ttk.Combobox(
         settings_window,
@@ -308,22 +313,38 @@ def create_settings_window(root, popup_state, settings_state, app_state):
         text="Apply",
         command=lambda: apply_language_settings(
             settings_state,
-            popup_state,
             source_var,
             target_var,
         ),
     )
+    history_button = tk.Button(
+        settings_window,
+        text="History",
+        command=lambda: create_history_window(root, history_state, app_state),
+    )
 
-    source_label.grid(row=0, column=0, sticky="w", pady=(0, 4))
-    source_combo.grid(row=1, column=0, sticky="ew", pady=(0, 12))
-    target_label.grid(row=2, column=0, sticky="w", pady=(0, 4))
-    target_combo.grid(row=3, column=0, sticky="ew", pady=(0, 12))
-    apply_button.grid(row=4, column=0, sticky="ew")
+    language_status.grid(row=0, column=0, sticky="ew", pady=(0, 12))
+    source_label.grid(row=1, column=0, sticky="w", pady=(0, 4))
+    source_combo.grid(row=2, column=0, sticky="ew", pady=(0, 12))
+    target_label.grid(row=3, column=0, sticky="w", pady=(0, 4))
+    target_combo.grid(row=4, column=0, sticky="ew", pady=(0, 12))
+    apply_button.grid(row=5, column=0, sticky="ew", pady=(0, 8))
+    history_button.grid(row=6, column=0, sticky="ew")
 
-    for widget in [settings_window, source_label, source_combo, target_label, target_combo, apply_button]:
+    for widget in [
+        settings_window,
+        language_status,
+        source_label,
+        source_combo,
+        target_label,
+        target_combo,
+        apply_button,
+        history_button,
+    ]:
         bind_internal_click(widget, app_state)
 
     settings_state["window"] = settings_window
+    settings_state["language_label"] = language_status
     settings_window.protocol("WM_DELETE_WINDOW", lambda: close_settings_window(settings_state))
 
 
@@ -422,7 +443,7 @@ def create_history_window(root, history_state, app_state):
         padx=8,
         pady=8,
         relief="solid",
-        borderwidth=1,
+        # borderwidth=1,
         font=("Arial", 13),
     )
     copy_button = tk.Button(
@@ -467,29 +488,18 @@ def create_translator_box(root, popup_state, settings_state, history_state, app_
     """Create the persistent always-on-top translator box."""
     root.overrideredirect(True)
     root.attributes("-topmost", True)
-    root.configure(bg="#222222")
+    root.configure(bg="#fffef7")
 
-    container = tk.Frame(root, bg="#222222")
-    toolbar = tk.Frame(container, bg="#222222")
-    language_label = tk.Label(
-        toolbar,
-        text=build_language_status(settings_state),
-        bg="#222222",
-        fg="#ffffff",
-        font=("Arial", 12),
-        anchor="w",
-    )
-    copy_button = tk.Button(toolbar, text="Copy", command=lambda: copy_popup_text(popup_state))
-    history_button = tk.Button(
-        toolbar,
-        text="History",
-        command=lambda: create_history_window(root, history_state, app_state),
-    )
-    settings_button = tk.Button(
-        toolbar,
+    container = tk.Frame(root, bg="#fffef7")
+    settings_button = tk.Label(
+        container,
         text="⚙",
-        width=3,
-        command=lambda: create_settings_window(root, popup_state, settings_state, app_state),
+        bg="#fffef7",
+        fg="#111111",
+        padx=0,
+        pady=0,
+        cursor="hand2",
+        font=("Arial", 13),
     )
     text_area = tk.Text(
         container,
@@ -502,30 +512,32 @@ def create_translator_box(root, popup_state, settings_state, history_state, app_
         height=2,
         relief="flat",
         borderwidth=0,
+        highlightthickness=0,
+        insertborderwidth=0,
     )
 
-    container.pack(padx=1, pady=1, fill="both", expand=True)
-    toolbar.pack(fill="x", padx=8, pady=(8, 4))
-    language_label.pack(side="left", fill="x", expand=True)
-    settings_button.pack(side="right", padx=(6, 0))
-    history_button.pack(side="right", padx=(6, 0))
-    copy_button.pack(side="right", padx=(6, 0))
-    text_area.pack(fill="both", expand=True)
+    container.pack(fill="both", expand=True)
+    text_area.pack(fill="both", expand=True, padx=14, pady=12)
+    settings_button.place(relx=1.0, x=-10, y=8, anchor="ne")
 
     popup_state["text"] = text_area
-    popup_state["language_label"] = language_label
 
     replace_text(text_area, "")
     root.bind("<Escape>", lambda event: deactivate_translator(root, popup_state, app_state))
     text_area.bind("<Escape>", lambda event: deactivate_translator(root, popup_state, app_state))
+    settings_button.bind(
+        "<ButtonRelease-1>",
+        lambda event: create_settings_window(
+            root,
+            settings_state,
+            history_state,
+            app_state,
+        ),
+    )
 
     for widget in [
         root,
         container,
-        toolbar,
-        language_label,
-        copy_button,
-        history_button,
         settings_button,
         text_area,
     ]:
@@ -605,8 +617,13 @@ def handle_selection_finished(
     )
 
 
+def is_shift_key(key):
+    """Return whether a pynput key is either Shift key."""
+    return key in {keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r}
+
+
 def handle_mouse_click(x, y, button, pressed, app_state, event_queue):
-    """Queue selection handling when the left mouse button is dragged and released."""
+    """Queue selection handling after drag or Shift-click selection."""
     if button != mouse.Button.left:
         return
     if pressed:
@@ -620,14 +637,23 @@ def handle_mouse_click(x, y, button, pressed, app_state, event_queue):
     drag_x = abs(x - app_state["mouse_down_x"])
     drag_y = abs(y - app_state["mouse_down_y"])
     dragged_enough = drag_x > MOUSE_DRAG_THRESHOLD or drag_y > MOUSE_DRAG_THRESHOLD
-    if app_state["active"] and dragged_enough:
+    selection_gesture = dragged_enough or app_state["shift_pressed"]
+    if app_state["active"] and selection_gesture:
         event_queue.put("selection_finished")
 
 
 def handle_key_press(key, app_state, event_queue):
-    """Queue deactivation when escape is pressed while active."""
+    """Track Shift and queue deactivation when escape is pressed while active."""
+    if is_shift_key(key):
+        app_state["shift_pressed"] = True
     if key == keyboard.Key.esc and app_state["active"]:
         event_queue.put("deactivate")
+
+
+def handle_key_release(key, app_state):
+    """Track when Shift is no longer held."""
+    if is_shift_key(key):
+        app_state["shift_pressed"] = False
 
 
 def poll_requests(
@@ -694,11 +720,12 @@ keyboard_controller = keyboard.Controller()
 root = tk.Tk()
 root.title("Translator")
 root.withdraw()
-popup_state = {"text": None, "language_label": None, "current_text": ""}
+popup_state = {"text": None, "current_text": ""}
 settings_state = {
     "source_language": "Auto-detect",
     "target_language": "English",
     "window": None,
+    "language_label": None,
 }
 history_state = {
     "entries": load_history(),
@@ -712,6 +739,7 @@ app_state = {
     "last_request": None,
     "mouse_down_x": 0,
     "mouse_down_y": 0,
+    "shift_pressed": False,
     "ignore_next_mouse_release": False,
 }
 create_translator_box(root, popup_state, settings_state, history_state, app_state)
@@ -723,7 +751,8 @@ hotkey_listener = keyboard.GlobalHotKeys(
 )
 
 key_listener = keyboard.Listener(
-    on_press=lambda key: handle_key_press(key, app_state, requests)
+    on_press=lambda key: handle_key_press(key, app_state, requests),
+    on_release=lambda key: handle_key_release(key, app_state),
 )
 
 mouse_listener = mouse.Listener(

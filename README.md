@@ -8,9 +8,9 @@ HoverTranslate is a small macOS translation helper. Press a shortcut, select tex
 - Select text with the mouse or trackpad while translation mode is active.
 - The selected text is translated with the OpenAI Responses API.
 - The translation appears in a small bottom-center box.
-- Use `Copy` to copy the current translation.
-- Use the settings button to choose source and target languages.
-- Use `History` to view recent translations stored on this Mac.
+- Select the translation text directly if you want to copy part or all of it.
+- Use the settings gear to choose source and target languages.
+- Open `History` from settings to view recent translations stored on this Mac.
 
 The default language pair is `Auto-detect -> English`.
 
@@ -86,7 +86,7 @@ pip install -r requirements.txt
 
 ## Language Settings
 
-Open the settings button in the translator box to choose:
+Open the settings gear in the translator box to choose:
 
 - Source: `Auto-detect`, `Arabic`, `English`, `Urdu`, `French`, `Spanish`, `Turkish`, `Persian`, `German`, `Chinese`
 - Target: `Arabic`, `English`, `Urdu`, `French`, `Spanish`, `Turkish`, `Persian`, `German`, `Chinese`
