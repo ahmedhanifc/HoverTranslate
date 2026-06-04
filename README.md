@@ -16,12 +16,16 @@ The default language pair is `Auto-detect -> English`.
 
 ## Setup
 
-Create and activate a Python environment:
+Create and activate a Python 3.13 environment:
 
 ```bash
+python3 -V
 python3 -m venv .venv
 source .venv/bin/activate
 ```
+
+This app depends on macOS keyboard and mouse listener packages. Use Python 3.13
+rather than Python 3.14 until the `pynput`/PyObjC macOS stack is stable there.
 
 Install dependencies:
 
@@ -49,16 +53,36 @@ Run the app:
 python main.py
 ```
 
+You can smoke-test the macOS listener dependency before running the full app:
+
+```bash
+python -c "from pynput import keyboard; import time; listener = keyboard.Listener(on_press=lambda key: None); listener.start(); time.sleep(0.5); print('listener alive:', listener.is_alive()); listener.stop()"
+```
+
 ## macOS Permissions
 
 The app copies selected text by sending `cmd+c`, and it listens for a global shortcut and mouse release. macOS may ask for Accessibility or Input Monitoring permissions for your terminal app.
 
-If the shortcut or text selection does not work, check:
+If the app exits with a listener startup message, or if the shortcut or text
+selection does not work, check:
 
 - System Settings -> Privacy & Security -> Accessibility
 - System Settings -> Privacy & Security -> Input Monitoring
 
 Add Terminal, iTerm, VS Code, or whichever app is running `python main.py`.
+Restart that app after changing permissions.
+
+If you see `KeyError: 'AXIsProcessTrusted'`, recreate the environment with
+Python 3.13 and reinstall the pinned dependencies:
+
+```bash
+deactivate
+rm -rf .venv
+python3 -V
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
 
 ## Language Settings
 

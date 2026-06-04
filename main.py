@@ -1,6 +1,7 @@
 import json
 import os
 import queue
+import sys
 import time
 import tkinter as tk
 from datetime import datetime, timezone
@@ -44,6 +45,52 @@ TARGET_LANGUAGES = [
     "German",
     "Chinese",
 ]
+INPUT_LISTENER_STARTUP_TIMEOUT = 0.35
+
+
+def build_input_listener_error(listener_name, error=None):
+    python_version = ".".join(str(part) for part in sys.version_info[:3])
+    message = (
+        "Arabic Hover could not start the macOS keyboard/mouse listeners.\n\n"
+        "Use a Python 3.13 environment, reinstall requirements.txt, and grant "
+        "Accessibility plus Input Monitoring permissions to the terminal or "
+        "editor running python main.py.\n\n"
+        f"Failed listener: {listener_name}\n"
+        f"Python: {python_version}\n"
+        "See README.md -> macOS Permissions for the full setup steps."
+    )
+    if error is not None:
+        message += f"\nError: {error!r}"
+    return message
+
+
+def stop_input_listeners(listeners):
+    for listener in listeners:
+        try:
+            if listener.is_alive():
+                listener.stop()
+        except RuntimeError:
+            pass
+
+
+def start_input_listeners(listener_specs):
+    started_listeners = []
+    for listener_name, listener in listener_specs:
+        try:
+            listener.start()
+            started_listeners.append(listener)
+            listener.join(INPUT_LISTENER_STARTUP_TIMEOUT)
+        except Exception as error:
+            stop_input_listeners(started_listeners)
+            raise RuntimeError(
+                build_input_listener_error(listener_name, error)
+            ) from error
+
+        if not listener.is_alive():
+            stop_input_listeners(started_listeners)
+            raise RuntimeError(build_input_listener_error(listener_name))
+
+    return started_listeners
 
 
 def require_env(name):
@@ -674,12 +721,10 @@ hotkey_listener = keyboard.GlobalHotKeys(
         HOTKEY: lambda: requests.put("toggle_active"),
     }
 )
-hotkey_listener.start()
 
 key_listener = keyboard.Listener(
     on_press=lambda key: handle_key_press(key, app_state, requests)
 )
-key_listener.start()
 
 mouse_listener = mouse.Listener(
     on_click=lambda x, y, button, pressed: handle_mouse_click(
@@ -691,7 +736,19 @@ mouse_listener = mouse.Listener(
         requests,
     )
 )
-mouse_listener.start()
+
+try:
+    start_input_listeners(
+        [
+            ("global hotkey", hotkey_listener),
+            ("keyboard listener", key_listener),
+            ("mouse listener", mouse_listener),
+        ]
+    )
+except RuntimeError as error:
+    root.destroy()
+    print(error, file=sys.stderr)
+    raise SystemExit(1) from error
 
 print("Translator running.")
 print("Press ctrl+option+a to toggle translation mode.")
