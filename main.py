@@ -164,8 +164,9 @@ def copy_selected_text(keyboard_controller):
     keyboard_controller.release(keyboard.Key.cmd)
 
     time.sleep(0.15)
-    selected_text = pyperclip.paste().strip()
-    pyperclip.copy(old_clipboard)
+    selected_clipboard = pyperclip.paste()
+    selected_text = (selected_clipboard or "").strip()
+    pyperclip.copy(old_clipboard or "")
 
     return selected_text
 
@@ -523,8 +524,10 @@ def create_translator_box(root, popup_state, settings_state, history_state, app_
     root.configure(bg="#fffef7")
 
     container = tk.Frame(root, bg="#fffef7")
+    text_frame = tk.Frame(container, bg="#fffef7")
+    action_frame = tk.Frame(container, bg="#fffef7")
     copy_button = tk.Label(
-        container,
+        action_frame,
         text=COPY_ICON,
         bg="#fffef7",
         fg="#000000",
@@ -534,7 +537,7 @@ def create_translator_box(root, popup_state, settings_state, history_state, app_
         font=("Arial", 14),
     )
     settings_button = tk.Label(
-        container,
+        action_frame,
         text="⚙",
         bg="#fffef7",
         fg="#000000",
@@ -544,12 +547,12 @@ def create_translator_box(root, popup_state, settings_state, history_state, app_
         font=("Arial", 15, "bold"),
     )
     text_label = tk.Label(
-        container,
+        text_frame,
         bg="#fffef7",
         fg="#111111",
         padx=14,
         pady=10,
-        wraplength=POPUP_WIDTH - 70,
+        wraplength=POPUP_WIDTH - 96,
         justify="left",
         anchor="w",
         font=("Arial", 15),
@@ -557,11 +560,11 @@ def create_translator_box(root, popup_state, settings_state, history_state, app_
     )
 
     container.pack(fill="both", expand=True)
-    text_label.pack(fill="both", expand=True, padx=(14, 64), pady=12)
-    copy_button.place(relx=1.0, x=-42, y=8, anchor="ne")
-    settings_button.place(relx=1.0, x=-10, y=8, anchor="ne")
-    copy_button.lift()
-    settings_button.lift()
+    text_frame.pack(side="left", fill="both", expand=True, padx=(14, 0), pady=12)
+    action_frame.pack(side="right", fill="y", padx=(8, 10), pady=8)
+    text_label.pack(fill="both", expand=True)
+    settings_button.pack(anchor="ne")
+    copy_button.pack(anchor="ne", pady=(8, 0))
 
     popup_state["label"] = text_label
     popup_state["copy_button"] = copy_button
@@ -585,6 +588,8 @@ def create_translator_box(root, popup_state, settings_state, history_state, app_
     for widget in [
         root,
         container,
+        text_frame,
+        action_frame,
         copy_button,
         settings_button,
         text_label,
